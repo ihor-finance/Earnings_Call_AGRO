@@ -4,359 +4,441 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Інвестиційний портфель</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#f9fafb;font-family:system-ui,sans-serif;color:#111}
-  input,select{outline:none;font-family:inherit;font-size:14px}
-  button{cursor:pointer;font-family:inherit}
-  ::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-thumb{background:#e5e7eb;border-radius:3px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f9fafb;font-family:system-ui,sans-serif;color:#111;font-size:14px}
+input,select,button{font-family:inherit;font-size:14px;outline:none}
+.header{background:#fff;border-bottom:1px solid #f0f0f0;padding:16px 16px 0;position:sticky;top:0;z-index:10}
+.header-top{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-weight:600;font-size:15px}
+.tabs{display:flex;gap:20px}
+.tab{background:none;border:none;border-bottom:2px solid transparent;color:#9ca3af;font-weight:400;font-size:13px;padding-bottom:8px;cursor:pointer;transition:all .15s}
+.tab.active{border-bottom-color:#3b82f6;color:#3b82f6;font-weight:600}
+.main{max-width:600px;margin:0 auto;padding:20px 16px}
+.page{display:none}.page.active{display:block}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+.card{background:#fff;border-radius:16px;border:1px solid #f0f0f0;padding:12px 14px}
+.card-label{font-size:11px;color:#9ca3af;margin-bottom:4px}
+.card-value{font-size:20px;font-weight:700}
+.card-sub{font-size:11px;color:#9ca3af;margin-top:4px}
+.box{background:#fff;border-radius:16px;border:1px solid #f0f0f0;overflow:hidden;margin-bottom:12px}
+.box-header{padding:12px 16px;border-bottom:1px solid #f9fafb;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:1px}
+.row{padding:12px 16px;border-bottom:1px solid #f9fafb}
+.row:last-child{border-bottom:none}
+.row-flex{display:flex;justify-content:space-between;align-items:flex-start}
+.bar-wrap{display:flex;align-items:center;gap:8px;margin-top:8px}
+.bar-bg{flex:1;background:#f3f4f6;border-radius:99px;height:4px}
+.bar-fill{background:#3b82f6;height:4px;border-radius:99px}
+.btn{cursor:pointer;border:none;border-radius:12px;padding:10px 16px;font-weight:500;font-size:13px;transition:background .15s}
+.btn-blue{background:#3b82f6;color:#fff}.btn-blue:hover{background:#2563eb}
+.btn-gray{background:#fff;color:#6b7280;border:1px solid #e5e7eb}.btn-gray:hover{background:#f9fafb}
+.form-box{background:#fff;border-radius:16px;border:1px solid #f0f0f0;padding:16px;margin-bottom:12px}
+.form-box h3{font-size:14px;font-weight:500;margin-bottom:12px}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:11px;color:#6b7280;margin-bottom:4px}
+.field input,.field select{width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:8px 12px}
+.field input:focus,.field select:focus{border-color:#93c5fd}
+.toggle-row{display:flex;gap:8px}
+.toggle-btn{flex:1;padding:7px 0;border-radius:12px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;font-size:13px;cursor:pointer}
+.toggle-btn.buy-active{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8}
+.toggle-btn.sell-active{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
+.form-actions{display:flex;gap:8px;margin-top:12px}
+.form-actions .btn{flex:1;padding:10px 0}
+.green{color:#16a34a}.red{color:#ef4444}.blue{color:#3b82f6}.gray{color:#9ca3af}
+.empty{text-align:center;padding:60px 0;color:#9ca3af}
+.empty-icon{font-size:40px;margin-bottom:12px}
+.profit-big{font-size:26px;font-weight:700;color:#3b82f6;margin-bottom:16px}
+.milestone-row{display:flex;justify-content:space-between;align-items:center}
+.milestone-row span:first-child{width:36px;color:#6b7280}
+#chart-wrap{position:relative;height:200px;margin-top:8px}
+.header-right{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 </style>
 </head>
 <body>
-<div id="root"></div>
-<script type="text/babel">
-const {useState,useEffect,useMemo}=React;
-const {LineChart,Line,XAxis,YAxis,CartesianGrid,Tooltip,Legend,ResponsiveContainer}=Recharts;
 
-const KEY="invest-pflio-v2";
-const uid=()=>Math.random().toString(36).slice(2,9);
-const fmt=(n,d=2)=>Number(n).toLocaleString("uk-UA",{minimumFractionDigits:d,maximumFractionDigits:d});
-const fmtUSD=(n,d=0)=>"$"+fmt(n,d);
+<div class="header">
+  <div style="max-width:600px;margin:0 auto">
+    <div class="header-top"><span>📈</span> Інвестиційний портфель</div>
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('portfolio')">📂 Портфель</button>
+      <button class="tab" onclick="showTab('transactions')">💳 Транзакції</button>
+      <button class="tab" onclick="showTab('forecast')">📈 Прогноз</button>
+    </div>
+  </div>
+</div>
 
-function App(){
-  const [tab,setTab]=useState("portfolio");
-  const [txns,setTxns]=useState(()=>{try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch{return[]}});
+<div class="main">
+  <!-- PORTFOLIO -->
+  <div id="page-portfolio" class="page active">
+    <div id="portfolio-content"></div>
+  </div>
 
-  const save=next=>{setTxns(next);localStorage.setItem(KEY,JSON.stringify(next))};
+  <!-- TRANSACTIONS -->
+  <div id="page-transactions" class="page">
+    <div class="header-right">
+      <span id="txn-count" class="gray">0 транзакцій</span>
+      <button class="btn btn-blue" onclick="toggleForm()">+ Додати</button>
+    </div>
 
-  const portfolio=useMemo(()=>{
-    const map={};
-    for(const t of txns){
-      if(!map[t.assetId])map[t.assetId]={assetId:t.assetId,name:t.name,ticker:t.ticker,shares:0,totalCost:0,dividendYield:t.dividendYield,currentPrice:t.price};
-      const s=t.type==="sell"?-1:1;
-      map[t.assetId].shares+=s*t.qty;
-      map[t.assetId].totalCost+=s*t.qty*t.price;
-      map[t.assetId].dividendYield=t.dividendYield;
-      map[t.assetId].currentPrice=t.price;
-      map[t.assetId].name=t.name;
-      map[t.assetId].ticker=t.ticker;
+    <div id="txn-form" class="form-box" style="display:none">
+      <h3>Нова транзакція</h3>
+      <div class="field">
+        <label>Тип операції</label>
+        <div class="toggle-row">
+          <button id="btn-buy" class="toggle-btn buy-active" onclick="setType('buy')">Купівля</button>
+          <button id="btn-sell" class="toggle-btn" onclick="setType('sell')">Продаж</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Актив</label>
+        <select id="f-asset" onchange="selectAsset(this.value)">
+          <option value="__new__">+ Новий актив</option>
+        </select>
+      </div>
+      <div id="new-asset-fields">
+        <div class="grid2" style="margin-bottom:0">
+          <div class="field"><label>Назва</label><input id="f-name" placeholder="Apple Inc."/></div>
+          <div class="field"><label>Тікер</label><input id="f-ticker" placeholder="AAPL"/></div>
+        </div>
+      </div>
+      <div class="grid2" style="margin-bottom:0">
+        <div class="field"><label>Кількість</label><input id="f-qty" type="number" placeholder="10"/></div>
+        <div class="field"><label>Ціна ($)</label><input id="f-price" type="number" placeholder="175"/></div>
+      </div>
+      <div class="grid2" style="margin-bottom:0">
+        <div class="field"><label>Дивіденди (%/рік)</label><input id="f-div" type="number" placeholder="1.5"/></div>
+        <div class="field"><label>Дата</label><input id="f-date" type="date"/></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-blue" onclick="submitTxn()">Зберегти</button>
+        <button class="btn btn-gray" onclick="toggleForm()">Скасувати</button>
+      </div>
+    </div>
+
+    <div id="txn-list"></div>
+  </div>
+
+  <!-- FORECAST -->
+  <div id="page-forecast" class="page">
+    <div class="form-box">
+      <h3>Параметри прогнозу</h3>
+      <div class="grid2" style="margin-bottom:0">
+        <div class="field"><label>Щомісячні інвестиції ($)</label><input id="fc-monthly" type="number" value="200"/></div>
+        <div class="field"><label>Горизонт (місяців)</label><input id="fc-months" type="number" value="36"/></div>
+      </div>
+      <div class="field"><label>Річне зростання ціни (%)</label><input id="fc-growth" type="number" value="7"/></div>
+      <div class="field" id="use-portfolio-wrap" style="display:none">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="fc-use-portfolio" checked onchange="toggleCustomFields()"/>
+          Враховувати поточний портфель
+        </label>
+      </div>
+      <div id="custom-fields" class="grid2" style="margin-bottom:0">
+        <div class="field"><label>Початкова ціна ($)</label><input id="fc-price" type="number" value="100"/></div>
+        <div class="field"><label>Дивіденди (%/рік)</label><input id="fc-yield" type="number" value="3"/></div>
+      </div>
+      <button class="btn btn-blue" style="width:100%;padding:11px 0;margin-top:4px" onclick="computeForecast()">Розрахувати прогноз →</button>
+    </div>
+    <div id="forecast-result"></div>
+  </div>
+</div>
+
+<script>
+const KEY = "invest-pflio-v3";
+let txns = [];
+let currentType = "buy";
+let currentAssetId = "__new__";
+let chart = null;
+
+function load() {
+  try { txns = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { txns = []; }
+  const d = new Date().toISOString().slice(0, 10);
+  document.getElementById("f-date").value = d;
+  renderAll();
+}
+
+function save() { localStorage.setItem(KEY, JSON.stringify(txns)); }
+
+function uid() { return Math.random().toString(36).slice(2, 9); }
+function fmt(n, d = 2) { return Number(n).toLocaleString("uk-UA", { minimumFractionDigits: d, maximumFractionDigits: d }); }
+function fmtUSD(n, d = 0) { return "$" + fmt(n, d); }
+
+function getPortfolio() {
+  const map = {};
+  for (const t of txns) {
+    if (!map[t.assetId]) map[t.assetId] = { assetId: t.assetId, name: t.name, ticker: t.ticker, shares: 0, totalCost: 0, dividendYield: t.dividendYield, currentPrice: t.price };
+    const s = t.type === "sell" ? -1 : 1;
+    map[t.assetId].shares += s * t.qty;
+    map[t.assetId].totalCost += s * t.qty * t.price;
+    map[t.assetId].dividendYield = t.dividendYield;
+    map[t.assetId].currentPrice = t.price;
+    map[t.assetId].name = t.name;
+    map[t.assetId].ticker = t.ticker;
+  }
+  return Object.values(map).filter(a => a.shares > 0.00001);
+}
+
+function showTab(name) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.getElementById("page-" + name).classList.add("active");
+  event.target.classList.add("active");
+  if (name === "forecast") updateForecastPortfolioToggle();
+}
+
+function renderAll() {
+  renderPortfolio();
+  renderTransactions();
+  updateAssetSelect();
+  updateForecastPortfolioToggle();
+}
+
+function renderPortfolio() {
+  const pf = getPortfolio();
+  const el = document.getElementById("portfolio-content");
+  if (!pf.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📂</div><p style="font-weight:500;color:#6b7280;margin-bottom:4px">Портфель порожній</p><p style="font-size:13px">Перейдіть до «Транзакції» та додайте перший актив</p></div>`;
+    return;
+  }
+  const totalValue = pf.reduce((s, a) => s + a.shares * a.currentPrice, 0);
+  const totalCost = pf.reduce((s, a) => s + a.totalCost, 0);
+  const totalDiv = pf.reduce((s, a) => s + a.shares * a.currentPrice * (a.dividendYield / 100), 0);
+  const pnl = totalValue - totalCost;
+  const pnlPct = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
+  const pnlColor = pnl >= 0 ? "#16a34a" : "#ef4444";
+
+  let rows = pf.map(a => {
+    const val = a.shares * a.currentPrice;
+    const div = val * (a.dividendYield / 100);
+    const w = totalValue > 0 ? (val / totalValue) * 100 : 0;
+    const profit = val - a.totalCost;
+    const pc = profit >= 0 ? "#16a34a" : "#ef4444";
+    return `<div class="row">
+      <div class="row-flex">
+        <div>
+          <div style="font-weight:500">${a.name} <span style="color:#9ca3af;font-weight:400;font-size:12px">(${a.ticker})</span></div>
+          <div style="font-size:11px;color:#9ca3af;margin-top:2px">${fmt(a.shares, 4)} шт · $${fmt(a.currentPrice)} · ${a.dividendYield}%/рік</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-weight:700">${fmtUSD(val)}</div>
+          <div style="font-size:11px;color:${pc};margin-top:2px">${profit >= 0 ? "+" : ""}${fmtUSD(profit)}</div>
+        </div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-bg"><div class="bar-fill" style="width:${Math.min(w, 100)}%"></div></div>
+        <span style="font-size:11px;color:#9ca3af">${fmt(w, 1)}%</span>
+        <span style="font-size:11px;color:#16a34a;font-weight:500">${fmtUSD(div)}/рік</span>
+      </div>
+    </div>`;
+  }).join("");
+
+  el.innerHTML = `
+    <div class="grid2">
+      <div class="card">
+        <div class="card-label">Загальна вартість</div>
+        <div class="card-value">${fmtUSD(totalValue)}</div>
+        <div class="card-sub" style="color:${pnlColor};font-weight:500">${pnl >= 0 ? "+" : ""}${fmtUSD(pnl)} (${pnl >= 0 ? "+" : ""}${fmt(pnlPct, 2)}%)</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Річні дивіденди</div>
+        <div class="card-value">${fmtUSD(totalDiv)}</div>
+        <div class="card-sub">${fmtUSD(totalDiv / 12, 2)}/міс</div>
+      </div>
+    </div>
+    <div class="box">
+      <div class="box-header">Активи</div>
+      ${rows}
+    </div>`;
+}
+
+function renderTransactions() {
+  const list = document.getElementById("txn-list");
+  document.getElementById("txn-count").textContent = txns.length + " транзакцій";
+  if (!txns.length) { list.innerHTML = `<div class="empty" style="padding:48px 0">Транзакцій ще немає</div>`; return; }
+  const rows = [...txns].reverse().map(t => {
+    const color = t.type === "buy" ? "#3b82f6" : "#ef4444";
+    const sign = t.type === "buy" ? "−" : "+";
+    return `<div class="row row-flex" style="align-items:center">
+      <div>
+        <div style="font-weight:500">${t.name} <span style="color:#9ca3af;font-weight:400;font-size:12px">(${t.ticker})</span></div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">${t.date} · ${t.type === "buy" ? "Купівля" : "Продаж"} ${fmt(t.qty, 4)} шт по $${fmt(t.price)}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-weight:600;color:${color}">${sign}${fmtUSD(t.qty * t.price)}</span>
+        <button onclick="deleteTxn('${t.id}')" style="background:none;border:none;color:#d1d5db;font-size:14px;cursor:pointer;padding:0 4px">✕</button>
+      </div>
+    </div>`;
+  }).join("");
+  list.innerHTML = `<div class="box">${rows}</div>`;
+}
+
+function updateAssetSelect() {
+  const pf = getPortfolio();
+  const sel = document.getElementById("f-asset");
+  sel.innerHTML = `<option value="__new__">+ Новий актив</option>` +
+    pf.map(a => `<option value="${a.assetId}">${a.name} (${a.ticker})</option>`).join("");
+}
+
+function toggleForm() {
+  const f = document.getElementById("txn-form");
+  f.style.display = f.style.display === "none" ? "block" : "none";
+}
+
+function setType(t) {
+  currentType = t;
+  document.getElementById("btn-buy").className = "toggle-btn" + (t === "buy" ? " buy-active" : "");
+  document.getElementById("btn-sell").className = "toggle-btn" + (t === "sell" ? " sell-active" : "");
+}
+
+function selectAsset(v) {
+  currentAssetId = v;
+  const nf = document.getElementById("new-asset-fields");
+  if (v === "__new__") {
+    nf.style.display = "block";
+    document.getElementById("f-name").value = "";
+    document.getElementById("f-ticker").value = "";
+    document.getElementById("f-div").value = "";
+  } else {
+    nf.style.display = "none";
+    const a = getPortfolio().find(a => a.assetId === v);
+    if (a) { document.getElementById("f-div").value = a.dividendYield; }
+  }
+}
+
+function submitTxn() {
+  const isNew = currentAssetId === "__new__";
+  const name = document.getElementById("f-name").value;
+  const ticker = document.getElementById("f-ticker").value;
+  const qty = parseFloat(document.getElementById("f-qty").value);
+  const price = parseFloat(document.getElementById("f-price").value);
+  const div = parseFloat(document.getElementById("f-div").value) || 0;
+  const date = document.getElementById("f-date").value;
+  if (!qty || !price || (isNew && !name)) { alert("Заповніть обов\'язкові поля!"); return; }
+  let assetId = isNew ? uid() : currentAssetId;
+  let tname = name, tticker = ticker.toUpperCase();
+  if (!isNew) {
+    const a = getPortfolio().find(a => a.assetId === currentAssetId);
+    tname = a.name; tticker = a.ticker;
+  }
+  txns.push({ id: uid(), assetId, name: tname, ticker: tticker, qty, price, dividendYield: div, date, type: currentType });
+  save(); renderAll();
+  document.getElementById("txn-form").style.display = "none";
+  document.getElementById("f-qty").value = "";
+  document.getElementById("f-price").value = "";
+  document.getElementById("f-name").value = "";
+  document.getElementById("f-ticker").value = "";
+  document.getElementById("f-div").value = "";
+}
+
+function deleteTxn(id) {
+  txns = txns.filter(t => t.id !== id);
+  save(); renderAll();
+}
+
+function updateForecastPortfolioToggle() {
+  const pf = getPortfolio();
+  const wrap = document.getElementById("use-portfolio-wrap");
+  wrap.style.display = pf.length ? "block" : "none";
+  toggleCustomFields();
+}
+
+function toggleCustomFields() {
+  const pf = getPortfolio();
+  const usePort = document.getElementById("fc-use-portfolio").checked && pf.length > 0;
+  document.getElementById("custom-fields").style.display = usePort ? "none" : "grid";
+}
+
+function computeForecast() {
+  const monthly = parseFloat(document.getElementById("fc-monthly").value) || 0;
+  const months = Math.min(parseInt(document.getElementById("fc-months").value) || 12, 360);
+  const annualGrowth = parseFloat(document.getElementById("fc-growth").value) / 100;
+  const mGrowth = Math.pow(1 + annualGrowth, 1 / 12) - 1;
+  const pf = getPortfolio();
+  const usePort = document.getElementById("fc-use-portfolio").checked && pf.length > 0;
+
+  let price = usePort
+    ? pf.reduce((s, a) => s + a.shares * a.currentPrice, 0) / Math.max(pf.reduce((s, a) => s + a.shares, 0), 0.0001)
+    : parseFloat(document.getElementById("fc-price").value) || 100;
+  const annualYield = usePort
+    ? pf.reduce((s, a) => s + (a.dividendYield / 100) * a.shares * a.currentPrice, 0) / Math.max(pf.reduce((s, a) => s + a.shares * a.currentPrice, 0), 0.0001)
+    : (parseFloat(document.getElementById("fc-yield").value) || 0) / 100;
+
+  let shares = usePort ? pf.reduce((s, a) => s + a.shares * a.currentPrice, 0) / price : 0;
+  let totalInvested = usePort ? pf.reduce((s, a) => s + a.totalCost, 0) : 0;
+  let divAccum = 0;
+  const labels = [], valData = [], invData = [];
+
+  for (let m = 0; m <= months; m++) {
+    const val = shares * price;
+    divAccum += val * (annualYield / 12);
+    if (m > 0) { shares += (monthly + val * (annualYield / 12)) / price; totalInvested += monthly; }
+    const step = Math.max(1, Math.floor(months / 24));
+    if (m % step === 0 || m === months) {
+      const yr = Math.floor(m / 12), mo = m % 12;
+      labels.push(m === 0 ? "Зараз" : mo === 0 ? `${yr}р` : `${m}м`);
+      valData.push(Math.round(shares * price));
+      invData.push(Math.round(totalInvested));
     }
-    return Object.values(map).filter(a=>a.shares>0.00001);
-  },[txns]);
+    price *= (1 + mGrowth);
+  }
 
-  const tabs=[["portfolio","📂 Портфель"],["transactions","💳 Транзакції"],["forecast","📈 Прогноз"]];
+  const finalVal = valData[valData.length - 1];
+  const finalInv = invData[invData.length - 1];
+  const profit = finalVal - finalInv;
 
-  return(
-    <div style={{minHeight:"100vh",background:"#f9fafb"}}>
-      <div style={{background:"#fff",borderBottom:"1px solid #f0f0f0",padding:"16px 16px 0",position:"sticky",top:0,zIndex:10}}>
-        <div style={{maxWidth:600,margin:"0 auto"}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-            <span style={{fontSize:20}}>📈</span>
-            <span style={{fontWeight:600,fontSize:15}}>Інвестиційний портфель</span>
-          </div>
-          <div style={{display:"flex",gap:20}}>
-            {tabs.map(([k,l])=>(
-              <button key={k} onClick={()=>setTab(k)} style={{background:"none",border:"none",borderBottom:tab===k?"2px solid #3b82f6":"2px solid transparent",color:tab===k?"#3b82f6":"#9ca3af",fontWeight:tab===k?600:400,fontSize:13,paddingBottom:8,transition:"all .15s"}}>
-                {l}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div style={{maxWidth:600,margin:"0 auto",padding:"20px 16px"}}>
-        {tab==="portfolio"&&<Portfolio portfolio={portfolio}/>}
-        {tab==="transactions"&&<Transactions txns={txns} onSave={save} portfolio={portfolio}/>}
-        {tab==="forecast"&&<Forecast portfolio={portfolio}/>}
-      </div>
+  // milestones
+  const step = Math.max(1, Math.floor(labels.length / 7));
+  let milestones = labels.map((l, i) => ({ l, v: valData[i], inv: invData[i] }))
+    .filter((_, i, arr) => i % step === 0 || i === arr.length - 1);
+
+  const mRows = milestones.map(d => `
+    <div class="row milestone-row">
+      <span>${d.l}</span>
+      <span style="font-weight:600">${fmtUSD(d.v, 0)}</span>
+      <span style="font-size:11px;color:#3b82f6">+${fmtUSD(d.v - d.inv, 0)}</span>
+      <span style="font-size:11px;color:#16a34a">${fmtUSD(Math.round(d.v * annualYield), 0)} дів./рік</span>
+    </div>`).join("");
+
+  document.getElementById("forecast-result").innerHTML = `
+    <div class="grid3">
+      <div class="card"><div class="card-label">Кінцева вартість</div><div style="font-size:16px;font-weight:700">${fmtUSD(finalVal)}</div></div>
+      <div class="card"><div class="card-label">Інвестовано</div><div style="font-size:16px;font-weight:700">${fmtUSD(finalInv)}</div></div>
+      <div class="card"><div class="card-label">Дивіденди</div><div style="font-size:16px;font-weight:700;color:#16a34a">${fmtUSD(Math.round(divAccum))}</div></div>
     </div>
-  );
-}
-
-function Portfolio({portfolio}){
-  const totalValue=portfolio.reduce((s,a)=>s+a.shares*a.currentPrice,0);
-  const totalCost=portfolio.reduce((s,a)=>s+a.totalCost,0);
-  const totalDiv=portfolio.reduce((s,a)=>s+a.shares*a.currentPrice*(a.dividendYield/100),0);
-  const pnl=totalValue-totalCost;
-  const pnlPct=totalCost>0?(pnl/totalCost)*100:0;
-
-  if(!portfolio.length)return(
-    <div style={{textAlign:"center",padding:"80px 0",color:"#9ca3af"}}>
-      <div style={{fontSize:40,marginBottom:12}}>📂</div>
-      <p style={{fontWeight:500,color:"#6b7280",marginBottom:4}}>Портфель порожній</p>
-      <p style={{fontSize:13}}>Перейдіть до «Транзакції» та додайте перший актив</p>
+    <div class="box" style="padding:16px">
+      <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Прибуток від реінвестування</div>
+      <div class="profit-big">${fmtUSD(profit)}</div>
+      <div id="chart-wrap"><canvas id="myChart"></canvas></div>
     </div>
-  );
+    <div class="box">
+      <div class="box-header">Ключові точки</div>
+      ${mRows}
+    </div>`;
 
-  return(
-    <div style={{display:"flex",flexDirection:"column",gap:12}}>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-        <Card>
-          <div style={{fontSize:11,color:"#9ca3af",marginBottom:4}}>Загальна вартість</div>
-          <div style={{fontSize:20,fontWeight:700}}>{fmtUSD(totalValue)}</div>
-          <div style={{fontSize:11,marginTop:4,fontWeight:500,color:pnl>=0?"#16a34a":"#ef4444"}}>
-            {pnl>=0?"+":""}{fmtUSD(pnl)} ({pnl>=0?"+":""}{fmt(pnlPct,2)}%)
-          </div>
-        </Card>
-        <Card>
-          <div style={{fontSize:11,color:"#9ca3af",marginBottom:4}}>Річні дивіденди</div>
-          <div style={{fontSize:20,fontWeight:700}}>{fmtUSD(totalDiv)}</div>
-          <div style={{fontSize:11,color:"#9ca3af",marginTop:4}}>{fmtUSD(totalDiv/12,2)}/міс</div>
-        </Card>
-      </div>
-      <div style={{background:"#fff",borderRadius:16,border:"1px solid #f0f0f0",overflow:"hidden"}}>
-        <div style={{padding:"12px 16px",borderBottom:"1px solid #f9fafb"}}>
-          <span style={{fontSize:11,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1}}>Активи</span>
-        </div>
-        {portfolio.map(a=>{
-          const val=a.shares*a.currentPrice;
-          const div=val*(a.dividendYield/100);
-          const w=totalValue>0?(val/totalValue)*100:0;
-          const profit=val-a.totalCost;
-          return(
-            <div key={a.assetId} style={{padding:"12px 16px",borderBottom:"1px solid #f9fafb"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                <div>
-                  <div style={{fontWeight:500,fontSize:14}}>{a.name} <span style={{color:"#9ca3af",fontWeight:400,fontSize:12}}>({a.ticker})</span></div>
-                  <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{fmt(a.shares,4)} шт · ${fmt(a.currentPrice)} · {a.dividendYield}%/рік</div>
-                </div>
-                <div style={{textAlign:"right"}}>
-                  <div style={{fontWeight:700,fontSize:14}}>{fmtUSD(val)}</div>
-                  <div style={{fontSize:11,color:profit>=0?"#16a34a":"#ef4444",marginTop:2}}>{profit>=0?"+":""}{fmtUSD(profit)}</div>
-                </div>
-              </div>
-              <div style={{marginTop:8,display:"flex",alignItems:"center",gap:8}}>
-                <div style={{flex:1,background:"#f3f4f6",borderRadius:99,height:4}}>
-                  <div style={{background:"#3b82f6",height:4,borderRadius:99,width:`${Math.min(w,100)}%`}}/>
-                </div>
-                <span style={{fontSize:11,color:"#9ca3af"}}>{fmt(w,1)}%</span>
-                <span style={{fontSize:11,color:"#16a34a",fontWeight:500}}>{fmtUSD(div)}/рік</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function Transactions({txns,onSave,portfolio}){
-  const [show,setShow]=useState(false);
-  const [isNew,setIsNew]=useState(true);
-  const [f,setF]=useState({name:"",ticker:"",qty:"",price:"",dividendYield:"",date:new Date().toISOString().slice(0,10),type:"buy",assetId:""});
-  const set=k=>v=>setF(p=>({...p,[k]:v}));
-
-  const selectAsset=v=>{
-    if(v==="__new__"){setIsNew(true);setF(p=>({...p,assetId:"",name:"",ticker:"",dividendYield:""}))}
-    else{const a=portfolio.find(a=>a.assetId===v);setIsNew(false);setF(p=>({...p,assetId:v,name:a.name,ticker:a.ticker,dividendYield:a.dividendYield}))}
-  };
-
-  const submit=()=>{
-    if(!f.qty||!f.price||(isNew&&!f.name))return;
-    const assetId=isNew?uid():f.assetId;
-    onSave([...txns,{id:uid(),assetId,name:f.name,ticker:f.ticker.toUpperCase(),qty:parseFloat(f.qty),price:parseFloat(f.price),dividendYield:parseFloat(f.dividendYield)||0,date:f.date,type:f.type}]);
-    setShow(false);setIsNew(true);
-    setF(p=>({...p,qty:"",price:"",name:"",ticker:"",dividendYield:"",assetId:""}));
-  };
-
-  return(
-    <div style={{display:"flex",flexDirection:"column",gap:12}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{fontSize:13,color:"#6b7280"}}>{txns.length} транзакцій</span>
-        <button onClick={()=>setShow(!show)} style={{background:"#3b82f6",color:"#fff",border:"none",borderRadius:12,padding:"6px 14px",fontSize:13}}>+ Додати</button>
-      </div>
-
-      {show&&(
-        <div style={{background:"#fff",borderRadius:16,border:"1px solid #f0f0f0",padding:16,display:"flex",flexDirection:"column",gap:12}}>
-          <p style={{fontWeight:500,fontSize:14}}>Нова транзакція</p>
-          <div>
-            <Label>Тип операції</Label>
-            <div style={{display:"flex",gap:8,marginTop:4}}>
-              {[["buy","Купівля"],["sell","Продаж"]].map(([v,l])=>(
-                <button key={v} onClick={()=>set("type")(v)} style={{flex:1,padding:"6px 0",borderRadius:12,border:`1px solid ${f.type===v?(v==="buy"?"#93c5fd":"#fca5a5"):"#e5e7eb"}`,background:f.type===v?(v==="buy"?"#eff6ff":"#fef2f2"):"#fff",color:f.type===v?(v==="buy"?"#1d4ed8":"#dc2626"):"#6b7280",fontSize:13}}>
-                  {l}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <Label>Актив</Label>
-            <select onChange={e=>selectAsset(e.target.value)} style={inputStyle}>
-              <option value="__new__">+ Новий актив</option>
-              {portfolio.map(a=><option key={a.assetId} value={a.assetId}>{a.name} ({a.ticker})</option>)}
-            </select>
-          </div>
-          {isNew&&(
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              <FInput label="Назва" value={f.name} onChange={set("name")} placeholder="Apple Inc."/>
-              <FInput label="Тікер" value={f.ticker} onChange={set("ticker")} placeholder="AAPL"/>
-            </div>
-          )}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <FInput label="Кількість" value={f.qty} onChange={set("qty")} type="number" placeholder="10"/>
-            <FInput label="Ціна ($)" value={f.price} onChange={set("price")} type="number" placeholder="175"/>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <FInput label="Дивіденди (%/рік)" value={f.dividendYield} onChange={set("dividendYield")} type="number" placeholder="1.5"/>
-            <FInput label="Дата" value={f.date} onChange={set("date")} type="date"/>
-          </div>
-          <div style={{display:"flex",gap:8,marginTop:4}}>
-            <button onClick={submit} style={{flex:1,background:"#3b82f6",color:"#fff",border:"none",borderRadius:12,padding:"10px 0",fontSize:13,fontWeight:500}}>Зберегти</button>
-            <button onClick={()=>setShow(false)} style={{padding:"10px 16px",fontSize:13,color:"#6b7280",border:"1px solid #e5e7eb",borderRadius:12,background:"#fff"}}>Скасувати</button>
-          </div>
-        </div>
-      )}
-
-      {txns.length===0?(
-        <div style={{textAlign:"center",padding:"48px 0",color:"#9ca3af",fontSize:13}}>Транзакцій ще немає</div>
-      ):(
-        <div style={{background:"#fff",borderRadius:16,border:"1px solid #f0f0f0",overflow:"hidden"}}>
-          {[...txns].reverse().map(t=>(
-            <div key={t.id} style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #f9fafb"}}>
-              <div>
-                <div style={{fontSize:14,fontWeight:500}}>{t.name} <span style={{color:"#9ca3af",fontWeight:400,fontSize:12}}>({t.ticker})</span></div>
-                <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{t.date} · {t.type==="buy"?"Купівля":"Продаж"} {fmt(t.qty,4)} шт по ${fmt(t.price)}</div>
-              </div>
-              <div style={{display:"flex",alignItems:"center",gap:12}}>
-                <span style={{fontSize:14,fontWeight:600,color:t.type==="buy"?"#3b82f6":"#ef4444"}}>
-                  {t.type==="buy"?"−":"+"}{fmtUSD(t.qty*t.price)}
-                </span>
-                <button onClick={()=>onSave(txns.filter(x=>x.id!==t.id))} style={{background:"none",border:"none",color:"#d1d5db",fontSize:14,padding:"0 4px"}>✕</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Forecast({portfolio}){
-  const [cfg,setCfg]=useState({monthly:200,months:36,growth:7,usePortfolio:true,customYield:3,customPrice:100});
-  const [result,setResult]=useState(null);
-  const set=k=>v=>setCfg(p=>({...p,[k]:v}));
-
-  const compute=()=>{
-    const monthly=parseFloat(cfg.monthly)||0;
-    const months=Math.min(parseInt(cfg.months)||12,360);
-    const mGrowth=Math.pow(1+parseFloat(cfg.growth)/100,1/12)-1;
-    const usePort=cfg.usePortfolio&&portfolio.length>0;
-
-    let price=usePort
-      ?portfolio.reduce((s,a)=>s+a.shares*a.currentPrice,0)/Math.max(portfolio.reduce((s,a)=>s+a.shares,0),0.0001)
-      :parseFloat(cfg.customPrice)||100;
-    const annualYield=usePort
-      ?portfolio.reduce((s,a)=>s+(a.dividendYield/100)*a.shares*a.currentPrice,0)/Math.max(portfolio.reduce((s,a)=>s+a.shares*a.currentPrice,0),0.0001)
-      :(parseFloat(cfg.customYield)||0)/100;
-
-    let shares=usePort?portfolio.reduce((s,a)=>s+a.shares*a.currentPrice,0)/price:0;
-    let totalInvested=usePort?portfolio.reduce((s,a)=>s+a.totalCost,0):0;
-    let divAccum=0;
-    const data=[];
-
-    for(let m=0;m<=months;m++){
-      const val=shares*price;
-      const monthDiv=val*(annualYield/12);
-      divAccum+=monthDiv;
-      if(m>0){shares+=(monthly+monthDiv)/price;totalInvested+=monthly;}
-      const step=Math.max(1,Math.floor(months/24));
-      if(m%step===0||m===months){
-        const yr=Math.floor(m/12),mo=m%12;
-        data.push({m,label:m===0?"Зараз":mo===0?`${yr}р`:`${m}м`,value:Math.round(shares*price),invested:Math.round(totalInvested),dividends:Math.round(divAccum)});
+  if (chart) chart.destroy();
+  const ctx = document.getElementById("myChart").getContext("2d");
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        { label: "Вартість портфеля", data: valData, borderColor: "#3b82f6", borderWidth: 2.5, pointRadius: 0, tension: 0.3, fill: false },
+        { label: "Вкладено", data: invData, borderColor: "#d1d5db", borderWidth: 1.5, borderDash: [5, 3], pointRadius: 0, tension: 0.3, fill: false }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { font: { size: 11 }, boxWidth: 20 } }, tooltip: { callbacks: { label: ctx => " " + fmtUSD(ctx.raw, 0) } } },
+      scales: {
+        x: { ticks: { font: { size: 10 }, color: "#9ca3af", maxTicksLimit: 8 }, grid: { color: "#f3f4f6" } },
+        y: { ticks: { font: { size: 10 }, color: "#9ca3af", callback: v => v >= 1000 ? "$" + (v / 1000).toFixed(0) + "k" : "$" + v }, grid: { color: "#f3f4f6" } }
       }
-      price*=(1+mGrowth);
     }
-    const last=data[data.length-1];
-    setResult({data,finalValue:last.value,totalInvested:last.invested,totalDivs:last.dividends,profit:last.value-last.invested});
-  };
-
-  const milestones=result?result.data.filter((_,i,arr)=>{const s=Math.max(1,Math.floor(arr.length/7));return i%s===0||i===arr.length-1;}):[];
-
-  return(
-    <div style={{display:"flex",flexDirection:"column",gap:12}}>
-      <div style={{background:"#fff",borderRadius:16,border:"1px solid #f0f0f0",padding:16,display:"flex",flexDirection:"column",gap:12}}>
-        <p style={{fontWeight:500,fontSize:14}}>Параметри прогнозу</p>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <FInput label="Щомісячні інвестиції ($)" value={cfg.monthly} onChange={set("monthly")} type="number"/>
-          <FInput label="Горизонт (місяців)" value={cfg.months} onChange={set("months")} type="number"/>
-        </div>
-        <FInput label="Річне зростання ціни активу (%)" value={cfg.growth} onChange={set("growth")} type="number"/>
-        {portfolio.length>0&&(
-          <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:"#6b7280",cursor:"pointer"}}>
-            <input type="checkbox" checked={cfg.usePortfolio} onChange={e=>set("usePortfolio")(e.target.checked)}/>
-            Враховувати поточний портфель
-          </label>
-        )}
-        {(!cfg.usePortfolio||!portfolio.length)&&(
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <FInput label="Початкова ціна ($)" value={cfg.customPrice} onChange={set("customPrice")} type="number"/>
-            <FInput label="Дивіденди (%/рік)" value={cfg.customYield} onChange={set("customYield")} type="number"/>
-          </div>
-        )}
-        <button onClick={compute} style={{background:"#3b82f6",color:"#fff",border:"none",borderRadius:12,padding:"11px 0",fontSize:13,fontWeight:500}}>
-          Розрахувати прогноз →
-        </button>
-      </div>
-
-      {result&&(
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
-            <Card><div style={{fontSize:11,color:"#9ca3af",marginBottom:4}}>Кінцева вартість</div><div style={{fontSize:16,fontWeight:700}}>{fmtUSD(result.finalValue)}</div></Card>
-            <Card><div style={{fontSize:11,color:"#9ca3af",marginBottom:4}}>Інвестовано</div><div style={{fontSize:16,fontWeight:700}}>{fmtUSD(result.totalInvested)}</div></Card>
-            <Card><div style={{fontSize:11,color:"#9ca3af",marginBottom:4}}>Дивіденди</div><div style={{fontSize:16,fontWeight:700,color:"#16a34a"}}>{fmtUSD(result.totalDivs)}</div></Card>
-          </div>
-
-          <div style={{background:"#fff",borderRadius:16,border:"1px solid #f0f0f0",padding:16}}>
-            <div style={{fontSize:11,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Прибуток від реінвестування</div>
-            <div style={{fontSize:26,fontWeight:700,color:"#3b82f6",marginBottom:16}}>{fmtUSD(result.profit)}</div>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={result.data} margin={{top:5,right:5,bottom:0,left:0}}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/>
-                <XAxis dataKey="label" tick={{fontSize:10,fill:"#9ca3af"}} interval="preserveStartEnd"/>
-                <YAxis tick={{fontSize:10,fill:"#9ca3af"}} tickFormatter={v=>v>=1000?`$${(v/1000).toFixed(0)}k`:`$${v}`} width={45}/>
-                <Tooltip formatter={(v,n)=>[fmtUSD(v,0),n==="value"?"Вартість":n==="invested"?"Вкладено":""]} contentStyle={{fontSize:12,borderRadius:8,border:"1px solid #e5e7eb"}}/>
-                <Legend iconType="line" wrapperStyle={{fontSize:11}} formatter={v=>v==="value"?"Вартість":v==="invested"?"Вкладено":v}/>
-                <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2.5} dot={false} name="value"/>
-                <Line type="monotone" dataKey="invested" stroke="#d1d5db" strokeWidth={1.5} dot={false} strokeDasharray="5 3" name="invested"/>
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div style={{background:"#fff",borderRadius:16,border:"1px solid #f0f0f0",overflow:"hidden"}}>
-            <div style={{padding:"12px 16px",borderBottom:"1px solid #f9fafb"}}>
-              <span style={{fontSize:11,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1}}>Ключові точки</span>
-            </div>
-            {milestones.map((d,i)=>(
-              <div key={i} style={{padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #f9fafb"}}>
-                <span style={{fontSize:13,color:"#6b7280",width:36}}>{d.label}</span>
-                <span style={{fontSize:13,fontWeight:600}}>{fmtUSD(d.value,0)}</span>
-                <span style={{fontSize:11,color:"#3b82f6"}}>+{fmtUSD(d.value-d.invested,0)}</span>
-                <span style={{fontSize:11,color:"#16a34a"}}>{fmtUSD(d.dividends,0)} дів.</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  });
 }
 
-const inputStyle={width:"100%",border:"1px solid #e5e7eb",borderRadius:12,padding:"8px 12px",marginTop:4,fontSize:14};
-function Card({children}){return<div style={{background:"#fff",borderRadius:16,border:"1px solid #f0f0f0",padding:"12px 14px"}}>{children}</div>}
-function Label({children}){return<div style={{fontSize:11,color:"#6b7280"}}>{children}</div>}
-function FInput({label,value,onChange,type="text",placeholder=""}){
-  return(
-    <div>
-      <Label>{label}</Label>
-      <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={inputStyle}/>
-    </div>
-  );
-}
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+load();
 </script>
 </body>
 </html>
