@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<!-- jsPDF loaded dynamically on demand -->
 <style>
 /* ─── Reset & Base ──────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -444,9 +443,6 @@ tbody tr:hover { background: var(--accent-glow); }
 
   <!-- ─── Actions ─── -->
   <section class="actions fade-up d4">
-    <button class="btn btn-primary" onclick="generatePDF()" id="btnPdf">
-      <span>📄</span> <span id="btnPdfText">Завантажити PDF</span>
-    </button>
     <button class="btn btn-secondary" onclick="toggleTable()" id="btnTable">
       <span>📊</span> <span id="btnTableText">Показати таблицю</span>
     </button>
@@ -507,7 +503,6 @@ const I = {
     rl6: 'Прибутковість',
     chartTitle1: 'Графік зростання депозиту',
     chartTitle2: 'Структура депозиту',
-    btnPdfText: 'Завантажити PDF',
     btnTableShow: 'Показати таблицю',
     btnTableHide: 'Сховати таблицю',
     lblYearly: 'Порічно',
@@ -521,8 +516,6 @@ const I = {
     leg1: 'Без інфляції', leg2: 'З інфляцією',
     leg3: 'Після податків та інфляції', leg4: 'Загальні внески',
     dLeg1: 'Початковий внесок', dLeg2: 'Поповнення', dLeg3: 'Прибуток', dLeg4: 'Податки',
-    pdfTitle: 'Звіт — Калькулятор складних відсотків',
-    pdfGen: 'Згенеровано', pdfTaxNote: 'Ставка податку',
     years: 'років',
   },
   en: {
@@ -545,7 +538,6 @@ const I = {
     rl6: 'Return',
     chartTitle1: 'Deposit Growth Chart',
     chartTitle2: 'Deposit Composition',
-    btnPdfText: 'Download PDF',
     btnTableShow: 'Show Table',
     btnTableHide: 'Hide Table',
     lblYearly: 'Yearly',
@@ -559,8 +551,6 @@ const I = {
     leg1: 'Without Inflation', leg2: 'With Inflation',
     leg3: 'After Tax & Inflation', leg4: 'Total Contributions',
     dLeg1: 'Initial Deposit', dLeg2: 'Contributions', dLeg3: 'Profit', dLeg4: 'Taxes',
-    pdfTitle: 'Report — Compound Interest Calculator',
-    pdfGen: 'Generated', pdfTaxNote: 'Tax Rate',
     years: 'years',
   }
 };
@@ -606,7 +596,7 @@ function applyLang() {
   const t = I[lang];
   const ids = ['headerTitle','headerSub','inputTitle','lbl_deposit','lbl_period','lbl_rate',
     'lbl_monthly','lbl_inflation','lbl_pdfo','lbl_vz','rl1','rl2','rl3','rl4','rl5','rl6',
-    'chartTitle1','chartTitle2','btnPdfText','lblYearly','lblMonthly','tableTitle','disclaimer'];
+    'chartTitle1','chartTitle2','lblYearly','lblMonthly','tableTitle','disclaimer'];
   ids.forEach(id => {
     const el = document.getElementById(id);
     if (el && t[id]) el.textContent = t[id];
@@ -827,226 +817,6 @@ function toggleTable() {
 }
 
 // ═══════════════════════════════════════════════════════
-// PDF Generation
-// ═══════════════════════════════════════════════════════
-async function loadScript(url) {
-  return new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = url;
-    s.onload = resolve;
-    s.onerror = reject;
-    document.head.appendChild(s);
-  });
-}
-
-function buildPdfHtml() {
-  const t = I[lang];
-  const r = lastResult;
-  const deposit = val('deposit');
-  const years_ = val('years');
-  const rate_ = val('rate');
-  const monthly_ = val('monthly');
-  const inflation_ = val('inflation');
-  const taxTotal = getTotalTax();
-  const pct = r.tc > 0 ? ((r.afterTax - r.tc) / r.tc * 100) : 0;
-  const dateStr = new Date().toLocaleDateString(lang === 'ua' ? 'uk-UA' : 'en-US');
-
-  // Get chart images
-  const gc = document.getElementById('growthChart');
-  const dc = document.getElementById('doughnutChart');
-  const growthImg = gc ? gc.toDataURL('image/png', 1.0) : '';
-  const doughnutImg = dc ? dc.toDataURL('image/png', 1.0) : '';
-
-  // Build yearly table rows
-  const yearlyRows = r.rows.filter(x => x.month % 12 === 0);
-  const tableRows = yearlyRows.map(row => `
-    <tr>
-      <td style="padding:6px 10px;text-align:center;font-weight:600;color:#0A7B5A;">${row.year}</td>
-      <td style="padding:6px 10px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;">$${fmt(row.noInf)}</td>
-      <td style="padding:6px 10px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;">$${fmt(row.inf)}</td>
-      <td style="padding:6px 10px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:#0A7B5A;">$${fmt(row.net)}</td>
-      <td style="padding:6px 10px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:#777;">$${fmt(row.tc)}</td>
-    </tr>
-  `).join('');
-
-  return `
-  <div style="width:780px;padding:44px 48px;font-family:'DM Sans',system-ui,sans-serif;color:#1A2332;background:#FFFFFF;">
-    <!-- Header -->
-    <div style="text-align:center;margin-bottom:32px;border-bottom:2px solid #E8ECF0;padding-bottom:24px;">
-      <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:10px;">
-        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#0A7B5A,#10B981);display:flex;align-items:center;justify-content:center;color:#FFF;font-weight:800;font-size:16px;">%</div>
-        <span style="font-size:22px;font-weight:700;letter-spacing:-0.03em;color:#0A7B5A;">${t.pdfTitle}</span>
-      </div>
-      <div style="font-size:12px;color:#8294AD;">${t.pdfGen}: ${dateStr}</div>
-    </div>
-
-    <!-- Two columns: Inputs + Results -->
-    <div style="display:flex;gap:32px;margin-bottom:32px;">
-      <!-- Inputs -->
-      <div style="flex:1;background:#F7F9FB;border-radius:12px;padding:20px 24px;">
-        <div style="font-size:14px;font-weight:700;margin-bottom:14px;color:#1A2332;">${t.inputTitle}</div>
-        <table style="width:100%;font-size:13px;color:#3A4A5E;">
-          <tr><td style="padding:4px 0;">${t.lbl_deposit}</td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:500;">$${fmt(deposit)}</td></tr>
-          <tr><td style="padding:4px 0;">${t.lbl_period}</td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:500;">${years_} ${t.years}</td></tr>
-          <tr><td style="padding:4px 0;">${t.lbl_rate}</td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:500;">${rate_}%</td></tr>
-          <tr><td style="padding:4px 0;">${t.lbl_monthly}</td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:500;">$${fmt(monthly_)}</td></tr>
-          <tr><td style="padding:4px 0;">${t.lbl_inflation}</td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:500;">${inflation_}%</td></tr>
-          <tr><td style="padding:4px 0;">${t.pdfTaxNote}</td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:500;">${taxTotal}%</td></tr>
-        </table>
-      </div>
-      <!-- Results -->
-      <div style="flex:1;">
-        <div style="font-size:14px;font-weight:700;margin-bottom:14px;color:#1A2332;">${lang === 'ua' ? 'Результати' : 'Results'}</div>
-        <div style="background:linear-gradient(135deg,#ECFDF5,#F0FDF4);border:1px solid #BBF7D0;border-radius:12px;padding:16px 20px;margin-bottom:10px;">
-          <div style="font-size:11px;color:#5E6C80;margin-bottom:4px;">${t.rl3}</div>
-          <div style="font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#0A7B5A;letter-spacing:-0.03em;">$${fmt(r.afterTax)}</div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <div style="background:#F7F9FB;border-radius:10px;padding:12px 14px;">
-            <div style="font-size:10px;color:#8294AD;">${t.rl1}</div>
-            <div style="font-size:15px;font-weight:600;font-family:'JetBrains Mono',monospace;color:#2563EB;">$${fmt(r.endVal)}</div>
-          </div>
-          <div style="background:#F7F9FB;border-radius:10px;padding:12px 14px;">
-            <div style="font-size:10px;color:#8294AD;">${t.rl2}</div>
-            <div style="font-size:15px;font-weight:600;font-family:'JetBrains Mono',monospace;color:#0A7B5A;">$${fmt(r.infVal)}</div>
-          </div>
-          <div style="background:#F7F9FB;border-radius:10px;padding:12px 14px;">
-            <div style="font-size:10px;color:#8294AD;">${t.rl4}</div>
-            <div style="font-size:15px;font-weight:600;font-family:'JetBrains Mono',monospace;color:#7C3AED;">$${fmt(r.tc)}</div>
-          </div>
-          <div style="background:#F7F9FB;border-radius:10px;padding:12px 14px;">
-            <div style="font-size:10px;color:#8294AD;">${t.rl5}</div>
-            <div style="font-size:15px;font-weight:600;font-family:'JetBrains Mono',monospace;color:#0A7B5A;">$${fmt(r.net)} <span style="font-size:11px;color:#8294AD;">(${fmt(pct)}%)</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Growth Chart -->
-    <div style="margin-bottom:28px;">
-      <div style="font-size:14px;font-weight:700;margin-bottom:12px;">◆ ${t.chartTitle1}</div>
-      ${growthImg ? `<img src="${growthImg}" style="width:100%;border-radius:8px;" />` : ''}
-    </div>
-
-    <!-- Doughnut Chart -->
-    <div style="margin-bottom:28px;text-align:center;">
-      <div style="font-size:14px;font-weight:700;margin-bottom:12px;text-align:left;">◆ ${t.chartTitle2}</div>
-      ${doughnutImg ? `<img src="${doughnutImg}" style="width:340px;border-radius:8px;" />` : ''}
-    </div>
-
-    <!-- Table -->
-    <div style="margin-bottom:24px;">
-      <div style="font-size:14px;font-weight:700;margin-bottom:12px;">◆ ${t.tableTitle}</div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <thead>
-          <tr style="border-bottom:2px solid #E0E4EA;">
-            <th style="padding:8px 10px;text-align:center;font-size:11px;color:#8294AD;font-weight:600;">${t.thPeriod_y}</th>
-            <th style="padding:8px 10px;text-align:right;font-size:11px;color:#8294AD;font-weight:600;">${t.thNoInf}</th>
-            <th style="padding:8px 10px;text-align:right;font-size:11px;color:#8294AD;font-weight:600;">${t.thInf}</th>
-            <th style="padding:8px 10px;text-align:right;font-size:11px;color:#8294AD;font-weight:600;">${t.thNet}</th>
-            <th style="padding:8px 10px;text-align:right;font-size:11px;color:#8294AD;font-weight:600;">${t.thContrib}</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${tableRows}
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Footer -->
-    <div style="border-top:1px solid #E0E4EA;padding-top:16px;text-align:center;">
-      <div style="font-size:10px;color:#8294AD;margin-bottom:6px;">${t.disclaimer}</div>
-      <div style="font-size:11px;color:#5E6C80;font-weight:500;">Ihor Pokhyton</div>
-      <div style="font-size:10px;color:#8294AD;margin-top:4px;">
-        linkedin.com/in/ifin &nbsp;·&nbsp; seekingalpha.com/author/ihor-pokhyton &nbsp;·&nbsp; t.me/FinanceAgain
-      </div>
-    </div>
-  </div>`;
-}
-
-async function generatePDF() {
-  const btn = document.getElementById('btnPdfText');
-  const origText = btn.textContent;
-  btn.textContent = lang === 'ua' ? 'Генерація...' : 'Generating...';
-
-  try {
-    // Load libraries dynamically
-    if (!window.html2canvas) {
-      await loadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
-    }
-    if (!window.jspdf) {
-      try { await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js'); }
-      catch { await loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js'); }
-    }
-
-    // Create hidden container with report HTML
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;';
-    wrapper.innerHTML = buildPdfHtml();
-    document.body.appendChild(wrapper);
-    const content = wrapper.firstElementChild;
-
-    // Wait a tick for images/fonts to render
-    await new Promise(r => setTimeout(r, 200));
-
-    // Render to canvas
-    const canvas = await html2canvas(content, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#FFFFFF',
-      logging: false,
-    });
-
-    document.body.removeChild(wrapper);
-
-    // Create PDF
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 8;
-    const usableW = pageW - margin * 2;
-
-    const imgData = canvas.toDataURL('image/png');
-    const imgW = usableW;
-    const imgH = (canvas.height * imgW) / canvas.width;
-
-    // Multi-page support: slice the canvas if content is taller than one page
-    const usableH = pageH - margin * 2;
-    if (imgH <= usableH) {
-      pdf.addImage(imgData, 'PNG', margin, margin, imgW, imgH);
-    } else {
-      // We need to slice the source canvas into page-sized chunks
-      const pxPerPage = Math.floor(canvas.width * (usableH / imgW));
-      const totalPages = Math.ceil(canvas.height / pxPerPage);
-
-      for (let page = 0; page < totalPages; page++) {
-        if (page > 0) pdf.addPage();
-        const srcY = page * pxPerPage;
-        const srcH = Math.min(pxPerPage, canvas.height - srcY);
-        // Create a sub-canvas for this page
-        const pageCanvas = document.createElement('canvas');
-        pageCanvas.width = canvas.width;
-        pageCanvas.height = srcH;
-        const ctx = pageCanvas.getContext('2d');
-        ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
-        const pageImg = pageCanvas.toDataURL('image/png');
-        const sliceH = (srcH * imgW) / canvas.width;
-        pdf.addImage(pageImg, 'PNG', margin, margin, imgW, sliceH);
-      }
-    }
-
-    pdf.save('compound-interest-report-' + new Date().toISOString().slice(0, 10) + '.pdf');
-  } catch (e) {
-    console.error('PDF error:', e);
-    alert(lang === 'ua'
-      ? 'Не вдалося згенерувати PDF. Перевірте підключення до інтернету або скористайтеся Ctrl+P для друку.'
-      : 'Could not generate PDF. Check your internet connection or use Ctrl+P to print.');
-  }
-
-  btn.textContent = origText;
-}
-
 // ═══════════════════════════════════════════════════════
 // Init
 // ═══════════════════════════════════════════════════════
